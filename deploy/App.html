@@ -3,11 +3,11 @@
 <head>
     <title>Alternative Timesheet</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Apr 03 2014 20:56:18 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Apr 03 2014 22:37:29 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Apr 03 2014 20:56:18 GMT-0700 (PDT)";
-        var CHECKSUM = 4936682503;
+        var APP_BUILD_DATE = "Thu Apr 03 2014 22:37:29 GMT-0700 (PDT)";
+        var CHECKSUM = 11766459381;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -15,6 +15,118 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+Ext.define('Rally.technicalservices.PreviousTimesheetDialog', {
+    extend: 'Rally.ui.dialog.Dialog',
+    alias:'widget.tsprevioustimesheetdialog',
+    config: {
+        /**
+         * @cfg {String}
+         * Title to give to the dialog
+         */
+        title: 'Tasks from Other Timesheets',
+        /**
+         * 
+         * @cfg {Integer} user_oid ObjectID of the user for the timesheet
+         */
+        user_oid: -1,
+        /**
+         * @cfg {String} selectionButtonText Text to show on button for picking the week
+         */
+        selectionButtonText: "Copy These Items",
+        height: 250,
+        width: 600
+    },
+    items: [{
+        xtype:'panel',
+        border: false,
+        items: [
+            {xtype:'container',itemId:'date_box'},
+            {xtype:'container',itemId:'grid_box',layout:'fit'}
+        ]
+    }],
+    
+    constructor: function(config) {
+        this.mergeConfig(config);
+        this.callParent([this.config]);
+    },
+
+    initComponent: function() {
+        this.callParent(arguments);
+        this.addEvents(
+                /**
+                 * @event weekChosen
+                 * Fires when user clicks done
+                 * @param {Rally.technicalservices.PreviousTimesheetDialog} this
+                 * @param {String} selected week start date (ISO)
+                 * @param [{TSTimeTask}] Time Entry Items from selected week
+                 */
+                'weekChosen'
+        );
+
+        this.addCls('chooserDialog');
+
+        this._addTimeGrid(new Date());
+        this._addButtons();
+    },
+    _addTimeGrid: function(week_date){
+        this.down('#grid_box').removeAll(true);
+        
+        this.time_grid = this.down('#grid_box').add({
+            xtype:'tstimesheet',
+            date_in_week: week_date,
+            user_oid: this.user_oid
+        });
+
+        return;
+    },
+    _addButtons: function() {
+        var me = this;
+        var onChange = function(db,new_value){
+            
+        };
+        
+        this.down('panel').addDocked({
+            xtype: 'toolbar',
+            dock: 'bottom',
+            padding: '0 0 10 0',
+            layout: {
+                type: 'hbox',
+                pack: 'center'
+            },
+            ui: 'footer',
+            items: [
+                {
+                    xtype:'rallydatefield',
+                    listeners: {
+                        scope: this,
+                        change: function( db, newValue, oldValue, eOpts ) {
+                            this._addTimeGrid(db.getValue());
+                        }
+                    }
+                },
+                {
+                    xtype: 'rallybutton',
+                    text: this.selectionButtonText,
+                    cls: 'primary small',
+                    scope: this,
+                    handler: function() {
+                        var start_of_week = this.time_grid.getStartOfWeek();
+                        var time_entry_items = this.time_grid.getTimeEntryItems() || [];
+                        this.fireEvent('weekChosen', this, start_of_week, time_entry_items);
+                        this.close();
+                    }
+                },
+                {
+                    xtype: 'rallybutton',
+                    text: 'Cancel',
+                    cls: 'secondary small',
+                    handler: this.close,
+                    scope: this
+                }
+            ]
+        });
+    }
+});
 /**
  * A link that pops up a version dialog box
  */
@@ -208,6 +320,7 @@ Ext.define('TSTimeTask',{
             this._getTimeEntryItemsForWeekStarting(this.start_of_week).then({
                 scope: this,
                 success: function(ties) {
+                    this.ties = ties;
                     this._createStoreAndGrid(ties);
                 }
             });
@@ -299,6 +412,12 @@ Ext.define('TSTimeTask',{
         
         var start_of_week_iso = Rally.util.DateTime.toIsoString(start_of_week_js).replace(/T.*$/,"T00:00:00.000Z");
         return start_of_week_iso;
+    },
+    getStartOfWeek: function() {
+        return this.start_of_week;
+    },
+    getTimeEntryItems: function() {
+        return this.ties || [];
     }
 });
 Ext.define('CustomApp', {
@@ -306,7 +425,7 @@ Ext.define('CustomApp', {
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     items: [
-        {xtype:'container',itemId:'selector_box', padding: 5, margin: 5},
+        {xtype:'container',itemId:'selector_box', padding: 5, margin: 5, defaults: { margin: 5 }, layout: { type: 'hbox' } },
         {xtype:'container',itemId:'display_box', padding: 5, margin: 5 }
         /*,
         {xtype:'tsinfolink'}
@@ -328,15 +447,94 @@ Ext.define('CustomApp', {
                 }
             }
         });
+        
+        container.add({
+            xtype:'rallybutton',
+            text:'+',
+            scope: this,
+            handler: function() {
+                this._showAddFromEarlierWeekDialog();
+            }
+        });
     },
     _replaceTimesheet: function(date_in_week){
-        this.down('#display_box').removeAll();
+        this.down('#display_box').removeAll(true);
         
-        this.down('#display_box').add({
+        this.timesheet = this.down('#display_box').add({
             xtype:'tstimesheet',
             date_in_week: date_in_week,
             user_oid: this.getContext().getUser().ObjectID
         });
+    },
+    _showAddFromEarlierWeekDialog: function() {
+        if ( this.dialog ) { this.dialog.destroy(); }
+        
+        this.dialog = Ext.create('Rally.technicalservices.PreviousTimesheetDialog',{
+            user_oid: this.getContext().getUser().ObjectID,
+            listeners: {
+                scope: this,
+                weekChosen: function(dialog, start_of_week, time_entry_items ){
+                    this.logger.log("WEEK CHOSEN: ",start_of_week,time_entry_items);
+                    this._addTimeEntryItems(time_entry_items);
+                }
+            }
+        }).show();
+    },
+    _addTimeEntryItems: function(ties) {
+        var start_of_week = this.timesheet.getStartOfWeek();
+        var me = this;
+        Rally.data.ModelFactory.getModel({
+            type: 'TimeEntryItem',
+            success: function(model) {
+                var promises = [];
+                Ext.Array.each(ties,function(tie){
+                    me.logger.log('ties ',tie);
+                    var tie_config = {
+                        WeekStartDate: start_of_week,
+                        User: { _ref: tie.get('User')._ref }
+                    };
+                    
+                    var task = tie.get('Task');
+                    if ( task && task._ref ){
+                        tie_config.Task = { _ref: task._ref };
+                    }
+                    
+                    var workproduct = tie.get('WorkProduct');
+                    if ( workproduct && workproduct._ref ) {
+                        tie_config.WorkProduct = { _ref: workproduct._ref };
+                    }
+                    
+                    var project = tie.get('Project');
+                    if ( project && project._ref ) {
+                        tie_config.Project = { _ref: project._ref };
+                    }
+                    me.logger.log("tie_config: ",tie_config);
+                    promises.push(me._createTimeEntryItem(model,tie_config));
+                });
+                Deft.Promise.all(promises).then({
+                    scope: me,
+                    success: function(operations){
+                        console.log("Operations ",operations);
+                        me._replaceTimesheet(me.down('rallydatefield').getValue() || new Date());
+                    },
+                    failure: function(error) {
+                        alert(error);
+                    }
+                });
+            }
+        });
+    },
+    _createTimeEntryItem: function(model,tie_config){
+        var deferred = Ext.create('Deft.Deferred');
+        
+        var tie = Ext.create(model,tie_config);
+        tie.save({
+            callback: function(result,operation) {
+                deferred.resolve(operation);
+            }
+        });
+        
+        return deferred.promise;
     }
 });
 

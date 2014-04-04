@@ -40,6 +40,7 @@
             this._getTimeEntryItemsForWeekStarting(this.start_of_week).then({
                 scope: this,
                 success: function(ties) {
+                    this.ties = ties;
                     this._createStoreAndGrid(ties);
                 }
             });
@@ -131,5 +132,11 @@
         
         var start_of_week_iso = Rally.util.DateTime.toIsoString(start_of_week_js).replace(/T.*$/,"T00:00:00.000Z");
         return start_of_week_iso;
+    },
+    getStartOfWeek: function() {
+        return this.start_of_week;
+    },
+    getTimeEntryItems: function() {
+        return this.ties || [];
     }
 });
