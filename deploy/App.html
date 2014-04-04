@@ -3,11 +3,11 @@
 <head>
     <title>Alternative Timesheet</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Apr 03 2014 11:08:10 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Apr 03 2014 20:34:42 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Apr 03 2014 11:08:10 GMT-0700 (PDT)";
-        var CHECKSUM = 1097310432;
+        var APP_BUILD_DATE = "Thu Apr 03 2014 20:34:42 GMT-0700 (PDT)";
+        var CHECKSUM = 4204339228;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -137,19 +137,172 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+Ext.define('TSTimeTask',{
+    extend: 'Ext.data.Model',
+    fields: [
+        { name: 'tie', type: 'auto' },
+        { name: 'Name', type: 'string', defaultValue:'', 
+            convert: function(value,record){
+                if ( record.get('tie') && record.get('tie').get('TaskDisplayString')) {
+                    return record.get('tie').get('TaskDisplayString');
+                }
+                if ( record.get('tie') && record.get('tie').get('WorkProductDisplayString')) {
+                    return record.get('tie').get('WorkProductDisplayString');
+                }
+                if ( record.get('tie') && record.get('tie').get('ProjectDisplayString')) {
+                    return record.get('tie').get('ProjectDisplayString');
+                }
+                return '';
+            }
+        },
+        { name: 'ObjectID', type: 'int', defaultValue:-1, 
+            convert: function(value,record){
+                if ( record.get('tie') ) {
+                    return record.get('tie').get('ObjectID');
+                }
+                return '';
+            }
+        }
+    ]
+    
+});
+/**
+ * An grid for displaying timesheet information
+ */
+ Ext.define('Rally.technicalservices.TimeSheet', {
+    extend: 'Ext.Container',
+    alias: 'widget.tstimesheet',
+    logger: new Rally.technicalservices.Logger(),
+    config: {
+        /**
+         * @cfg {String/Date} date_in_week a date in the week for this timesheet.  If not
+         * provided, default to today
+         */
+        date_in_week: new Date(),
+        /**
+         * @cfg {Boolean} test_flag  set to true to skip steps that involve going to the server
+         * (for unit testing only)
+         */
+        test_flag: false
+    },
+    items: [
+        { xtype:'container', itemId: 'timesheet-header', tpl: '<tpl>Week Starting: {start_of_week:substr(0,10)}</tpl>' },
+        { xtype:'container', itemId: 'timesheet-grid-box' }
+    ],
+    constructor: function(config) {
+        this.mergeConfig(config);
+        this.callParent([this.config]);
+    },
+
+    initComponent: function() {
+        this.callParent(arguments);
+        this.start_of_week = this._getStartOfWeek(this.date_in_week);
+        this.down('#timesheet-header').update(this);
+
+        if ( !this.test_flag ) { 
+            this._getTimeEntryItemsForWeekStarting(this.start_of_week).then({
+                scope: this,
+                success: function(ties) {
+                    this._createStoreAndGrid(ties);
+                }
+            });
+        }
+    },
+    _createStoreAndGrid: function(ties) {
+        var configured_data = [];
+        Ext.Array.each(ties,function(tie){
+            configured_data.push(Ext.create('TSTimeTask',{tie:tie}));
+        });
+        
+        var time_task_store = Ext.create('Rally.data.custom.Store',{
+            model: 'TSTimeTask',
+            data: configured_data
+        });
+        this.logger.log("after configuring",configured_data);
+        
+        this.down('#timesheet-grid-box').add({
+            xtype:'rallygrid',
+            store: time_task_store,
+            columnCfgs: [
+                { dataIndex:'Name', text: 'Name' }
+            ]
+        });
+    },
+    /*
+     * Given a start date, get the time entry items (each line on the time sheets)
+     * ( Returns a promise )
+     */
+    _getTimeEntryItemsForWeekStarting:function(start_of_week){
+        var deferred = Ext.create('Deft.Deferred');
+        Ext.create('Rally.data.wsapi.Store',{
+            model:'TimeEntryItem',
+            autoLoad: true,
+            filters: [{property:'WeekStartDate',value:start_of_week}],
+            listeners: {
+                scope: this,
+                load: function(store,ties){
+                    this.logger.log("from database",ties);
+                    deferred.resolve(ties);
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    /*
+     * Given a date, return the ISO string for the beginning of the week
+     */
+    _getStartOfWeek: function(date_in_week){
+        if ( typeof(date_in_week) == "string" ) {
+            var timezone_offset = new Date().getTimezoneOffset() / 60;
+            var timezone_offset_string = Math.abs(timezone_offset) + ":00";
+            
+            if ( Math.abs(timezone_offset) < 10 ) {
+                timezone_offset_string = "0" + timezone_offset_string;
+            }
+            if ( timezone_offset > 0 ) {
+                timezone_offset_string = "-" + timezone_offset_string;
+            } else {
+                timezone_offset_string = "+" + timezone_offset_string;;
+            }
+            if ( ! /Z/.test(date_in_week) ) {
+                if ( /T/.test(date_in_week) ) {
+                    date_in_week = date_in_week + timezone_offset_string;
+                } else {
+                    date_in_week = date_in_week + "T00:00:00" + timezone_offset_string;
+                }
+            }
+            date_in_week = Rally.util.DateTime.fromIsoString(date_in_week);
+        }
+        var day_of_week = date_in_week.getDay();
+        var day_of_month = date_in_week.getDate();
+        // push to midnight
+        date_in_week.setHours(0,0,0,0);
+        
+        // determine what beginning of week is
+        var start_of_week_js = date_in_week;
+        start_of_week_js.setDate( day_of_month - day_of_week );
+        
+        var start_of_week_iso = Rally.util.DateTime.toIsoString(start_of_week_js).replace(/T.*$/,"T00:00:00.000Z");
+        return start_of_week_iso;
+    }
+});
 Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
+    defaults: [{margin: 5, padding: 5}],
     items: [
         {xtype:'container',itemId:'message_box',tpl:'Hello, <tpl>{_refObjectName}</tpl>'},
-        {xtype:'container',itemId:'display_box'} 
+        {xtype:'container',itemId:'display_box', padding: 5, margin: 5 }
         /*,
         {xtype:'tsinfolink'}
         */
     ],
     launch: function() {
-        this.down('#message_box').update(this.getContext().getUser());
+        //this.down('#message_box').update(this.getContext().getUser());
+        this.down('#display_box').add({
+            xtype:'tstimesheet'
+        });
     }
 });
 

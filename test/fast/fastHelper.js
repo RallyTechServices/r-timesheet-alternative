@@ -9,6 +9,16 @@ var shiftDayBeginningToEnd = function(day) {
     return Rally.util.DateTime.add(Rally.util.DateTime.add(Rally.util.DateTime.add(day,'hour',23), 'minute',59),'second',59);
 };
 
+Ext.define('mockTIE',{
+    extend: 'Ext.data.Model',
+    fields: [
+        {name:'ObjectID', type: 'int'},
+        {name:'TaskDisplayString',type:'string'},
+        {name:'WorkProductDisplayString',type:'string'},
+        {name:'ProjectDisplayString',type:'string'}
+    ]
+});
+
 Ext.define('mockStory',{
     extend: 'Ext.data.Model',
     fields: [
