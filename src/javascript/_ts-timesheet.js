@@ -15,7 +15,12 @@
          * @cfg {Boolean} test_flag  set to true to skip steps that involve going to the server
          * (for unit testing only)
          */
-        test_flag: false
+        test_flag: false,
+        /**
+         * 
+         * @cfg {Integer} user_oid  the ObjectID of the user for this timesheet
+         */
+        user_oid: -1
     },
     items: [
         { xtype:'container', itemId: 'timesheet-header', tpl: '<tpl>Week Starting: {start_of_week:substr(0,10)}</tpl>' },
@@ -69,10 +74,14 @@
      */
     _getTimeEntryItemsForWeekStarting:function(start_of_week){
         var deferred = Ext.create('Deft.Deferred');
+        
         Ext.create('Rally.data.wsapi.Store',{
             model:'TimeEntryItem',
             autoLoad: true,
-            filters: [{property:'WeekStartDate',value:start_of_week}],
+            filters: [
+                {property:'WeekStartDate',value:start_of_week},
+                {property:'User.ObjectID',value:this.user_oid}
+            ],
             listeners: {
                 scope: this,
                 load: function(store,ties){

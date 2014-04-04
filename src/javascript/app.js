@@ -31,7 +31,8 @@ Ext.define('CustomApp', {
         
         this.down('#display_box').add({
             xtype:'tstimesheet',
-            date_in_week: date_in_week
+            date_in_week: date_in_week,
+            user_oid: this.getContext().getUser().ObjectID
         });
     }
 });
