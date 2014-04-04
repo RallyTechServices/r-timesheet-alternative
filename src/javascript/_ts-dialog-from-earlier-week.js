@@ -17,7 +17,7 @@ Ext.define('Rally.technicalservices.PreviousTimesheetDialog', {
          */
         selectionButtonText: "Copy These Items",
         height: 250,
-        width: 600
+        width: 450
     },
     items: [{
         xtype:'panel',
@@ -57,8 +57,11 @@ Ext.define('Rally.technicalservices.PreviousTimesheetDialog', {
         this.time_grid = this.down('#grid_box').add({
             xtype:'tstimesheet',
             date_in_week: week_date,
-            user_oid: this.user_oid
+            user_oid: this.user_oid,
+            show_timesheet_header: false
         });
+        
+        this.setTitle("Tasks from " + this.time_grid.getStartOfWeek().replace(/T.*$/,""));
 
         return;
     },

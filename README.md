@@ -6,7 +6,7 @@ This app allows users to interact with Rally Timesheets in a smaller form.
 
 Features:
 
-  * You can copy timesheet _lines_ from previous week to this week
+  * You can copy timesheet _items_ from one week to another
 
 
 ## Development Notes

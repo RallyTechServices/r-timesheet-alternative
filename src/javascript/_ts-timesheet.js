@@ -20,11 +20,15 @@
          * 
          * @cfg {Integer} user_oid  the ObjectID of the user for this timesheet
          */
-        user_oid: -1
+        user_oid: -1,
+        /**
+         * @cfg {Boolean} show_timesheet_header Use to show or hide the items above the table.
+         */
+        show_timesheet_header: true
     },
     items: [
         { xtype:'container', itemId: 'timesheet-header', tpl: '<tpl>Week Starting: {start_of_week:substr(0,10)}</tpl>' },
-        { xtype:'container', itemId: 'timesheet-grid-box', margin: 5 }
+        { xtype:'container', itemId: 'timesheet-grid-box', margin: 5, height: 175 }
     ],
     constructor: function(config) {
         this.mergeConfig(config);
@@ -34,7 +38,9 @@
     initComponent: function() {
         this.callParent(arguments);
         this.start_of_week = this._getStartOfWeek(this.date_in_week);
-        this.down('#timesheet-header').update(this);
+        if ( this.show_timesheet_header ) {
+            this.down('#timesheet-header').update(this);
+        }
 
         if ( !this.test_flag ) { 
             this._getTimeEntryItemsForWeekStarting(this.start_of_week).then({
@@ -54,14 +60,17 @@
         
         var time_task_store = Ext.create('Rally.data.custom.Store',{
             model: 'TSTimeTask',
+            pageSize: 5,
             data: configured_data
         });
-        this.logger.log("after configuring",configured_data);
+        
+        this.logger.log("HEIGHT: ", this.getHeight());
         
         this.down('#timesheet-grid-box').add({
             xtype:'rallygrid',
             store: time_task_store,
             pagingToolbarCfg: {
+                pageSizes: [5, 15, 25, 50],
                 store: time_task_store
             },
             columnCfgs: [
