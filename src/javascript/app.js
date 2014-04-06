@@ -17,6 +17,7 @@ Ext.define('CustomApp', {
     _addSelectors: function(container) {
         container.add({
             xtype:'rallydatefield',
+            value: new Date(),
             listeners: {
                 scope: this,
                 change: function( db, newValue, oldValue, eOpts ) {
@@ -28,7 +29,7 @@ Ext.define('CustomApp', {
         
         container.add({
             xtype:'rallybutton',
-            text:'+',
+            text:'Add from Other Timesheet',
             scope: this,
             handler: function() {
                 this._showAddFromEarlierWeekDialog();

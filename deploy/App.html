@@ -3,11 +3,11 @@
 <head>
     <title>Alternative Timesheet</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Apr 04 2014 09:57:12 GMT-0700 (PDT) -->
+    <!--  Build Date: Sat Apr 05 2014 18:00:26 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Apr 04 2014 09:57:12 GMT-0700 (PDT)";
-        var CHECKSUM = 12320074720;
+        var APP_BUILD_DATE = "Sat Apr 05 2014 18:00:26 GMT-0700 (PDT)";
+        var CHECKSUM = 12566061842;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -65,7 +65,7 @@ Ext.define('Rally.technicalservices.PreviousTimesheetDialog', {
 
         this.addCls('chooserDialog');
 
-        this._addTimeGrid(new Date());
+        this._addTimeGrid(Rally.util.DateTime.add( new Date(), "week", -1 ));
         this._addButtons();
     },
     _addTimeGrid: function(week_date){
@@ -78,7 +78,7 @@ Ext.define('Rally.technicalservices.PreviousTimesheetDialog', {
             show_timesheet_header: false
         });
         
-        this.setTitle("Tasks from " + this.time_grid.getStartOfWeek().replace(/T.*$/,""));
+        this.setTitle("Tasks from Week Starting " + this.time_grid.getStartOfWeek().replace(/T.*$/,""));
 
         return;
     },
@@ -100,6 +100,7 @@ Ext.define('Rally.technicalservices.PreviousTimesheetDialog', {
             items: [
                 {
                     xtype:'rallydatefield',
+                    value: Rally.util.DateTime.add( new Date(), "week", -1 ),
                     listeners: {
                         scope: this,
                         change: function( db, newValue, oldValue, eOpts ) {
@@ -451,6 +452,7 @@ Ext.define('CustomApp', {
     _addSelectors: function(container) {
         container.add({
             xtype:'rallydatefield',
+            value: new Date(),
             listeners: {
                 scope: this,
                 change: function( db, newValue, oldValue, eOpts ) {
@@ -462,7 +464,7 @@ Ext.define('CustomApp', {
         
         container.add({
             xtype:'rallybutton',
-            text:'+',
+            text:'Add from Other Timesheet',
             scope: this,
             handler: function() {
                 this._showAddFromEarlierWeekDialog();

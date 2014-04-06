@@ -48,7 +48,7 @@ Ext.define('Rally.technicalservices.PreviousTimesheetDialog', {
 
         this.addCls('chooserDialog');
 
-        this._addTimeGrid(new Date());
+        this._addTimeGrid(Rally.util.DateTime.add( new Date(), "week", -1 ));
         this._addButtons();
     },
     _addTimeGrid: function(week_date){
@@ -61,7 +61,7 @@ Ext.define('Rally.technicalservices.PreviousTimesheetDialog', {
             show_timesheet_header: false
         });
         
-        this.setTitle("Tasks from " + this.time_grid.getStartOfWeek().replace(/T.*$/,""));
+        this.setTitle("Tasks from Week Starting " + this.time_grid.getStartOfWeek().replace(/T.*$/,""));
 
         return;
     },
@@ -83,6 +83,7 @@ Ext.define('Rally.technicalservices.PreviousTimesheetDialog', {
             items: [
                 {
                     xtype:'rallydatefield',
+                    value: Rally.util.DateTime.add( new Date(), "week", -1 ),
                     listeners: {
                         scope: this,
                         change: function( db, newValue, oldValue, eOpts ) {
